@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nothing Session Manager - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f8fafc;
+    }
+    .modal {
+      transition: opacity 0.3s ease;
+    }
+    .modal-content {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .modal-enter {
+      opacity: 0;
+    } 
+    .modal-enter-active {
+      opacity: 1;
+    }
+    .modal-exit {
+      opacity: 1;
+    }
+    .modal-exit-active {
+      opacity: 0;
+    }
+    .modal-content-enter {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    .modal-content-enter-active {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .modal-content-exit {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .modal-content-exit-active {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    .json-viewer {
+      background-color: #1e293b;
+      color: #e2e8f0;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .json-viewer pre {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-badge i {
+      margin-right: 0.25rem;
+    }
+    .action-btn {
+      transition: all 0.2s ease;
+    }
+    .action-btn:hover {
+      transform: translateY(-1px);
+    }
+    .checkbox-cell {
+      width: 40px;
+    }
+    .session-id {
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      color: #4b5563;
+    }
+    .last-used {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <nav class="fixed top-0 left-0 right-0 bg-indigo-600 text-white shadow-lg z-50">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fas fa-key fa-lg"></i>
+        <span class="text-xl font-bold">Nothing Session Manager</span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="refreshBtn" class="action-btn bg-indigo-500 hover:bg-indigo-700 text-white px-4 py-2 rounded-full flex items-center">
+          <i class="fas fa-sync-alt mr-2"></i> Refresh
+        </button>
+        <button id="logoutBtn" class="action-btn bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded-full flex items-center">
+          <i class="fas fa-sign-out-alt mr-2"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mx-auto px-4 pt-24 pb-8">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-indigo-100 text-indigo-600 mr-4">
+            <i class="fas fa-database fa-lg"></i>
+          </div>
+          <div>
+            <p class="text-gray-500 text-sm">Total Sessions</p>
+            <h3 class="text-2xl font-bold" id="totalCount">0</h3>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+            <i class="fas fa-check-circle fa-lg"></i>
+          </div>
+          <div>
+            <p class="text-gray-500 text-sm">Valid Sessions</p>
+            <h3 class="text-2xl font-bold" id="validCount">0</h3>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+            <i class="fas fa-clock fa-lg"></i>
+          </div>
+          <div>
+            <p class="text-gray-500 text-sm">Recent (24h)</p>
+            <h3 class="text-2xl font-bold" id="recentCount">0</h3>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+            <i class="fas fa-exclamation-triangle fa-lg"></i>
+          </div>
+          <div>
+            <p class="text-gray-500 text-sm">Expired Sessions</p>
+            <h3 class="text-2xl font-bold" id="expiredCount">0</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="bg-white rounded-lg shadow mb-6 p-4">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-2">
+          <button id="addSessionBtn" class="action-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center">
+            <i class="fas fa-plus mr-2"></i> Add Session
+          </button>
+          <button id="bulkDeleteBtn" class="action-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded flex items-center">
+            <i class="fas fa-trash-alt mr-2"></i> Delete Selected
+          </button>
+          <button id="exportBtn" class="action-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center">
+            <i class="fas fa-file-export mr-2"></i> Export
+          </button>
+        </div>
+        <div class="relative w-full md:w-auto">
+          <div class="flex">
+            <input type="text" id="searchInput" placeholder="Search sessions..." class="w-full px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="searchBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-r">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-white rounded-lg shadow mb-6 p-4">
+      <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+        <div>
+          <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select id="statusFilter" class="w-full md:w-40 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">All</option>
+            <option value="valid">Valid</option>
+            <option value="invalid">Invalid</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+        <div>
+          <label for="dateFilter" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+          <select id="dateFilter" class="w-full md:w-40 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+        <div>
+          <label for="sortBy" class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+          <select id="sortBy" class="w-full md:w-40 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFiltersBtn" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+            <i class="fas fa-times mr-1"></i> Reset Filters
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sessions Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="checkbox-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <input type="checkbox" id="selectAll" class="rounded text-indigo-600 focus:ring-indigo-500">
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session ID</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WA Number</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Used</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sessionTable" class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td colspan="7" class="px-6 py-4 text-center text-gray-500">Loading sessions...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="bg-gray-50 px-6 py-3 flex items-center justify-between border-t border-gray-200">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Previous
+          </button>
+          <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Next
+          </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-gray-700">
+              Showing <span id="startItem" class="font-medium">1</span> to <span id="endItem" class="font-medium">10</span> of <span id="totalItems" class="font-medium">0</span> sessions
+            </p>
+          </div>
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button id="prevPage" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <span class="sr-only">Previous</span>
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <div id="pageNumbers" class="flex">
+                <!-- Page numbers will be inserted here -->
+              </div>
+              <button id="nextPage" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <span class="sr-only">Next</span>
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Session Modal -->
+  <div id="addModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
+              <i class="fas fa-plus text-indigo-600"></i>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalTitle">Add New Session</h3>
+              <div class="mt-4 space-y-4">
+                <div>
+                  <label for="addSessionId" class="block text-sm font-medium text-gray-700">Session ID</label>
+                  <input type="text" id="addSessionId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label for="addSessionName" class="block text-sm font-medium text-gray-700">Name</label>
+                  <input type="text" id="addSessionName" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label for="addSessionNumber" class="block text-sm font-medium text-gray-700">WhatsApp Number</label>
+                  <input type="text" id="addSessionNumber" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label for="addSessionData" class="block text-sm font-medium text-gray-700">Session Data (JSON)</label>
+                  <textarea id="addSessionData" rows="10" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" id="saveSessionBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Save Session
+          </button>
+          <button type="button" id="cancelAddBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Session Modal -->
+  <div id="viewModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+              <i class="fas fa-eye text-blue-600"></i>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900" id="viewModalTitle">Session Details</h3>
+              <div class="mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Session ID</p>
+                    <p id="viewSessionId" class="mt-1 text-sm text-gray-900 session-id"></p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Name</p>
+                    <p id="viewSessionName" class="mt-1 text-sm text-gray-900"></p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">WhatsApp Number</p>
+                    <p id="viewSessionNumber" class="mt-1 text-sm text-gray-900"></p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Status</p>
+                    <p id="viewSessionStatus" class="mt-1 text-sm"></p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Created</p>
+                    <p id="viewSessionCreated" class="mt-1 text-sm text-gray-900"></p>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-500">Last Used</p>
+                    <p id="viewSessionLastUsed" class="mt-1 text-sm text-gray-900"></p>
+                  </div>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-500">Session Data</p>
+                  <div id="viewSessionData" class="json-viewer mt-2">
+                    <pre>Loading session data...</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" id="copySessionBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+            <i class="fas fa-copy mr-2"></i> Copy Data
+          </button>
+          <button type="button" id="closeViewBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Session Modal -->
+  <div id="editModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+              <i class="fas fa-edit text-yellow-600"></i>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">Edit Session</h3>
+              <div class="mt-4 space-y-4">
+                <div>
+                  <label for="editSessionId" class="block text-sm font-medium text-gray-700">Session ID</label>
+                  <input type="text" id="editSessionId" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label for="editSessionName" class="block text-sm font-medium text-gray-700">Name</label>
+                  <input type="text" id="editSessionName" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label for="editSessionNumber" class="block text-sm font-medium text-gray-700">WhatsApp Number</label>
+                  <input type="text" id="editSessionNumber" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                  <label for="editSessionData" class="block text-sm font-medium text-gray-700">Session Data (JSON)</label>
+                  <textarea id="editSessionData" rows="10" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" id="saveEditBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Save Changes
+          </button>
+          <button type="button" id="cancelEditBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+              <i class="fas fa-exclamation-triangle text-red-600"></i>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+              <h3 class="text-lg leading-6 font-medium text-gray-900" id="deleteModalTitle">Delete Session</h3>
+              <div class="mt-2">
+                <p class="text-sm text-gray-500" id="deleteModalMessage">Are you sure you want to delete this session? This action cannot be undone.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" id="confirmDeleteBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Delete
+          </button>
+          <button type="button" id="cancelDeleteBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="exportModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+      </div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+              <i class="fas fa-file-export text-green-600"></i>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">Export Sessions</h3>
+              <div class="mt-4 space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Export Format</label>
+                  <div class="mt-2 space-y-2">
+                    <div class="flex items-center">
+                      <input id="exportFormatJson" name="exportFormat" type="radio" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300" checked>
+                      <label for="exportFormatJson" class="ml-2 block text-sm text-gray-700">JSON</label>
+                    </div>
+                    <div class="flex items-center">
+                      <input id="exportFormatCsv" name="exportFormat" type="radio" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                      <label for="exportFormatCsv" class="ml-2 block text-sm text-gray-700">CSV</label>
+                    </div>
+                    <div class="flex items-center">
+                      <input id="exportFormatTxt" name="exportFormat" type="radio" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                      <label for="exportFormatTxt" class="ml-2 block text-sm text-gray-700">Plain Text</label>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Export Scope</label>
+                  <div class="mt-2 space-y-2">
+                    <div class="flex items-center">
+                      <input id="exportScopeAll" name="exportScope" type="radio" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300" checked>
+                      <label for="exportScopeAll" class="ml-2 block text-sm text-gray-700">All Sessions</label>
+                    </div>
+                    <div class="flex items-center">
+                      <input id="exportScopeSelected" name="exportScope" type="radio" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                      <label for="exportScopeSelected" class="ml-2 block text-sm text-gray-700">Selected Sessions Only</label>
+                    </div>
+                    <div class="flex items-center">
+                      <input id="exportScopeFiltered" name="exportScope" type="radio" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                      <label for="exportScopeFiltered" class="ml-2 block text-sm text-gray-700">Current Filter Results</label>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label for="exportFileName" class="block text-sm font-medium text-gray-700">File Name</label>
+                  <input type="text" id="exportFileName" value="sessions_export" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button type="button" id="confirmExportBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+            Export
+          </button>
+          <button type="button" id="cancelExportBtn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-4 right-4 hidden">
+    <div class="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
+      <i class="fas fa-check-circle mr-2"></i>
+      <span id="toastMessage">Operation completed successfully!</span>
+    </div>
+  </div>
+
+ <script>
+  // Check if user is logged in
+  const encodedRedirect = localStorage.getItem('encodedRedirect');
+  if (localStorage.getItem('login') !== 'true' || !encodedRedirect) {
+    window.location.href = '/';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchSessions();
+    setupEventListeners(); // در صورتی که قبلاً تعریف شده باشه
+  });
+
+  // دریافت سشن‌ها از API
+  async function fetchSessions() {
+    try {
+      const res = await fetch('/api/files');
+      const data = await res.json();
+
+      sessionsData = data;
+
+      updateStats();
+      renderSessionsTable(sessionsData.files);
+    } catch (e) {
+      console.error('Error fetching sessions:', e);
+      alert('Failed to load sessions.');
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('totalCount').textContent = sessionsData.total || 0;
+    document.getElementById('validCount').textContent = sessionsData.valid || 0;
+    document.getElementById('recentCount').textContent = sessionsData.recent || 0;
+    document.getElementById('expiredCount').textContent = sessionsData.expired || 0;
+  }
+
+  function renderSessionsTable(sessions) {
+    const tableBody = document.getElementById('sessionTable');
+    tableBody.innerHTML = '';
+
+    if (!sessions || sessions.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+            No sessions found matching your criteria.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    sessions.forEach(session => {
+      const row = document.createElement('tr');
+      row.className = 'hover:bg-gray-50';
+
+      const lastUsed = session.timestamp || session.lastUsed || new Date().toISOString();
+
+      row.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap checkbox-cell">
+          <input type="checkbox" class="session-checkbox rounded text-indigo-600 focus:ring-indigo-500" data-id="${session.id}">
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="session-id">${session.id}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${session.name || 'Unknown'}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${session.number?.replace(/:.*/, '') || 'N/A'}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          ${getStatusBadge(session.status || 'valid')}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${formatDate(lastUsed)}</div>
+          <div class="text-xs text-gray-500 last-used">${timeSince(lastUsed)}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <div class="flex space-x-2">
+            <button class="view-btn action-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs" data-id="${session.id}">
+              <i class="fas fa-eye mr-1"></i> View
+            </button>
+            <button class="edit-btn action-btn bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs" data-id="${session.id}">
+              <i class="fas fa-edit mr-1"></i> Edit
+            </button>
+            <button class="delete-btn action-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs" data-id="${session.id}">
+              <i class="fas fa-trash-alt mr-1"></i> Delete
+            </button>
+            <button class="more-btn action-btn bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs" data-id="${session.id}">
+              <i class="fas fa-ellipsis-h"></i>
+            </button>
+          </div>
+        </td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+
+    updatePaginationInfo(); // اگر قبلاً تعریف شده
+  }
+
+  function getStatusBadge(status) {
+    const statusClasses = {
+      valid: 'bg-green-100 text-green-800',
+      invalid: 'bg-red-100 text-red-800',
+      expired: 'bg-yellow-100 text-yellow-800'
+    };
+    const icons = {
+      valid: 'fa-check-circle',
+      invalid: 'fa-times-circle',
+      expired: 'fa-exclamation-circle'
+    };
+    return `
+      <span class="status-badge ${statusClasses[status] || statusClasses.valid}">
+        <i class="fas ${icons[status] || icons.valid}"></i>
+        ${status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    `;
+  }
+
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  function timeSince(dateString) {
+    const date = new Date(dateString);
+    const seconds = Math.floor((new Date() - date) / 1000);
+
+    let interval = Math.floor(seconds / 31536000);
+    if (interval >= 1) return interval + " year" + (interval === 1 ? "" : "s") + " ago";
+
+    interval = Math.floor(seconds / 2592000);
+    if (interval >= 1) return interval + " month" + (interval === 1 ? "" : "s") + " ago";
+
+    interval = Math.floor(seconds / 86400);
+    if (interval >= 1) return interval + " day" + (interval === 1 ? "" : "s") + " ago";
+
+    interval = Math.floor(seconds / 3600);
+    if (interval >= 1) return interval + " hour" + (interval === 1 ? "" : "s") + " ago";
+
+    interval = Math.floor(seconds / 60);
+    if (interval >= 1) return interval + " minute" + (interval === 1 ? "" : "s") + " ago";
+
+    return Math.floor(seconds) + " second" + (seconds === 1 ? "" : "s") + " ago";
+  }
+
+    // Update pagination info
+    function updatePaginationInfo() {
+      document.getElementById('startItem').textContent = 1;
+      document.getElementById('endItem').textContent = sessionsData.files.length;
+      document.getElementById('totalItems').textContent = sessionsData.total;
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+      // Refresh button
+      document.getElementById('refreshBtn').addEventListener('click', fetchSessions);
+      
+      // Logout button
+      document.getElementById('logoutBtn').addEventListener('click', logout);
+      
+      // Add session button
+      document.getElementById('addSessionBtn').addEventListener('click', () => {
+        document.getElementById('addModal').classList.remove('hidden');
+      });
+      
+      // Save session button
+      document.getElementById('saveSessionBtn').addEventListener('click', saveSession);
+      
+      // Cancel add button
+      document.getElementById('cancelAddBtn').addEventListener('click', () => {
+        document.getElementById('addModal').classList.add('hidden');
+      });
+      
+      // Bulk delete button
+      document.getElementById('bulkDeleteBtn').addEventListener('click', confirmBulkDelete);
+      
+      // Export button
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        document.getElementById('exportModal').classList.remove('hidden');
+      });
+      
+      // Confirm export button
+      document.getElementById('confirmExportBtn').addEventListener('click', exportSessions);
+      
+      // Cancel export button
+      document.getElementById('cancelExportBtn').addEventListener('click', () => {
+        document.getElementById('exportModal').classList.add('hidden');
+      });
+      
+      // Search button
+      document.getElementById('searchBtn').addEventListener('click', searchSessions);
+      
+      // Search input enter key
+      document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchSessions();
+      });
+      
+      // Status filter
+      document.getElementById('statusFilter').addEventListener('change', applyFilters);
+      
+      // Date filter
+      document.getElementById('dateFilter').addEventListener('change', applyFilters);
+      
+      // Sort by
+      document.getElementById('sortBy').addEventListener('change', applyFilters);
+      
+      // Reset filters
+      document.getElementById('resetFiltersBtn').addEventListener('click', resetFilters);
+      
+      // Select all checkbox
+      document.getElementById('selectAll').addEventListener('change', (e) => {
+        const checkboxes = document.querySelectorAll('.session-checkbox');
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = e.target.checked;
+        });
+      });
+      
+      // View modal close
+      document.getElementById('closeViewBtn').addEventListener('click', () => {
+        document.getElementById('viewModal').classList.add('hidden');
+      });
+      
+      // Copy session data
+      document.getElementById('copySessionBtn').addEventListener('click', copySessionData);
+      
+      // Edit modal save
+      document.getElementById('saveEditBtn').addEventListener('click', saveEditedSession);
+      
+      // Edit modal cancel
+      document.getElementById('cancelEditBtn').addEventListener('click', () => {
+        document.getElementById('editModal').classList.add('hidden');
+      });
+      
+      // Delete modal confirm
+      document.getElementById('confirmDeleteBtn').addEventListener('click', deleteSession);
+      
+      // Delete modal cancel
+      document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+        document.getElementById('deleteModal').classList.add('hidden');
+      });
+      
+      // Delegate table row actions
+      document.getElementById('sessionTable').addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        const sessionId = target.getAttribute('data-id');
+        const session = sessionsData.files.find(s => s.id === sessionId);
+        
+        if (target.classList.contains('view-btn')) {
+          viewSession(session);
+        } else if (target.classList.contains('edit-btn')) {
+          editSession(session);
+        } else if (target.classList.contains('delete-btn')) {
+          confirmDelete(session);
+        } else if (target.classList.contains('more-btn')) {
+          showMoreActions(session, target);
+        }
+      });
+    }
+
+    // View session
+    function viewSession(sessionId) {
+  fetch(`/files/${sessionId}`)
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to load session file");
+      return res.text();
+    })
+    .then(content => {
+      const raw = JSON.parse(content);
+
+      const name = raw.me?.name || 'N/A';
+      const number = raw.me?.id?.split('@')[0] || 'N/A';
+
+      document.getElementById('viewModalTitle').textContent = `Session: ${sessionId}`;
+      document.getElementById('viewSessionId').textContent = sessionId;
+      document.getElementById('viewSessionName').textContent = name;
+      document.getElementById('viewSessionNumber').textContent = number;
+      document.getElementById('viewSessionStatus').innerHTML = getStatusBadge('valid');
+      document.getElementById('viewSessionCreated').textContent =
+        formatDate(Date.now()) + ' (' + timeSince(Date.now()) + ')';
+      document.getElementById('viewSessionLastUsed').textContent =
+        formatDate(Date.now()) + ' (' + timeSince(Date.now()) + ')';
+
+      const dataElement = document.querySelector('#viewSessionData pre');
+      dataElement.textContent = JSON.stringify(raw, null, 2);
+
+      document.getElementById('viewModal').classList.remove('hidden');
+    })
+    .catch(err => {
+      console.error('Error viewing session:', err);
+      alert('Failed to load session file.');
+    });
+}
+
+    // Copy session data
+    function copySessionData() {
+      const dataElement = document.querySelector('#viewSessionData pre');
+      navigator.clipboard.writeText(dataElement.textContent)
+        .then(() => {
+          showToast('Session data copied to clipboard!');
+        })
+        .catch(err => {
+          console.error('Failed to copy: ', err);
+        });
+    }
+
+    // Edit session
+    function editSession(session) {
+      document.getElementById('editSessionId').value = session.id;
+      document.getElementById('editSessionName').value = session.name;
+      document.getElementById('editSessionNumber').value = session.number;
+      document.getElementById('editSessionData').value = JSON.stringify(session.data, null, 2);
+      
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    // Save edited session
+    function saveEditedSession() {
+      const sessionId = document.getElementById('editSessionId').value;
+      const sessionName = document.getElementById('editSessionName').value;
+      const sessionNumber = document.getElementById('editSessionNumber').value;
+      const sessionData = document.getElementById('editSessionData').value;
+      
+      try {
+        JSON.parse(sessionData); // Validate JSON
+      } catch (e) {
+        alert('Invalid JSON data');
+        return;
+      }
+      
+      // In a real app, this would be an API call
+      const sessionIndex = sessionsData.files.findIndex(s => s.id === sessionId);
+      if (sessionIndex !== -1) {
+        sessionsData.files[sessionIndex].id = sessionId;
+        sessionsData.files[sessionIndex].name = sessionName;
+        sessionsData.files[sessionIndex].number = sessionNumber;
+        sessionsData.files[sessionIndex].data = JSON.parse(sessionData);
+        
+        fetchSessions();
+        document.getElementById('editModal').classList.add('hidden');
+        showToast('Session updated successfully!');
+      }
+    }
+
+    // Confirm delete
+    function confirmDelete(session) {
+      document.getElementById('deleteModalTitle').textContent = `Delete Session: ${session.id}`;
+      document.getElementById('deleteModalMessage').textContent = `Are you sure you want to delete the session "${session.id}"? This action cannot be undone.`;
+      document.getElementById('confirmDeleteBtn').setAttribute('data-id', session.id);
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    // Confirm bulk delete
+    function confirmBulkDelete() {
+      const selectedSessions = Array.from(document.querySelectorAll('.session-checkbox:checked')).map(cb => cb.getAttribute('data-id'));
+      
+      if (selectedSessions.length === 0) {
+        showToast('Please select at least one session to delete', 'error');
+        return;
+      }
+      
+      document.getElementById('deleteModalTitle').textContent = `Delete ${selectedSessions.length} Sessions`;
+      document.getElementById('deleteModalMessage').textContent = `Are you sure you want to delete ${selectedSessions.length} selected sessions? This action cannot be undone.`;
+      document.getElementById('confirmDeleteBtn').setAttribute('data-ids', JSON.stringify(selectedSessions));
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    // Delete session
+    function deleteSession() {
+      const sessionIds = this.getAttribute('data-ids') ? JSON.parse(this.getAttribute('data-ids')) : [this.getAttribute('data-id')];
+      
+      // In a real app, this would be an API call
+      sessionsData.files = sessionsData.files.filter(s => !sessionIds.includes(s.id));
+      sessionsData.total = sessionsData.files.length;
+      
+      fetchSessions();
+      document.getElementById('deleteModal').classList.add('hidden');
+      showToast(`${sessionIds.length} session(s) deleted successfully!`);
+    }
+
+    // Show more actions
+    function showMoreActions(session, button) {
+      // In a real app, this would show a dropdown menu with additional actions
+      console.log('More actions for session:', session.id);
+      showToast(`Showing more actions for ${session.id}`);
+    }
+
+    // Save new session
+    function saveSession() {
+      const sessionId = document.getElementById('addSessionId').value;
+      const sessionName = document.getElementById('addSessionName').value;
+      const sessionNumber = document.getElementById('addSessionNumber').value;
+      const sessionData = document.getElementById('addSessionData').value;
+      
+      if (!sessionId || !sessionName || !sessionNumber || !sessionData) {
+        alert('Please fill in all fields');
+        return;
+      }
+      
+      try {
+        JSON.parse(sessionData); // Validate JSON
+      } catch (e) {
+        alert('Invalid JSON data');
+        return;
+      }
+      
+      // In a real app, this would be an API call
+      const newSession = {
+        id: sessionId,
+        filename: `${sessionId}.json`,
+        name: sessionName,
+        number: sessionNumber,
+        status: 'valid',
+        created: new Date().toISOString(),
+        lastUsed: new Date().toISOString(),
+        data: JSON.parse(sessionData)
+      };
+      
+      sessionsData.files.push(newSession);
+      sessionsData.total = sessionsData.files.length;
+      sessionsData.valid += 1;
+      
+      fetchSessions();
+      document.getElementById('addModal').classList.add('hidden');
+      showToast('Session added successfully!');
+      
+      // Clear form
+      document.getElementById('addSessionId').value = '';
+      document.getElementById('addSessionName').value = '';
+      document.getElementById('addSessionNumber').value = '';
+      document.getElementById('addSessionData').value = '';
+    }
+
+    // Search sessions
+    function searchSessions() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      
+      if (!query) {
+        renderSessionsTable(sessionsData.files);
+        return;
+      }
+      
+      const filteredSessions = sessionsData.files.filter(session => 
+        session.id.toLowerCase().includes(query) ||
+        session.name.toLowerCase().includes(query) ||
+        session.number.toLowerCase().includes(query)
+      );
+      
+      renderSessionsTable(filteredSessions);
+    }
+
+    // Apply filters
+    function applyFilters() {
+      const statusFilter = document.getElementById('statusFilter').value;
+      const dateFilter = document.getElementById('dateFilter').value;
+      const sortBy = document.getElementById('sortBy').value;
+      
+      let filteredSessions = [...sessionsData.files];
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        filteredSessions = filteredSessions.filter(session => session.status === statusFilter);
+      }
+      
+      // Apply date filter
+      const now = new Date();
+      if (dateFilter !== 'all') {
+        filteredSessions = filteredSessions.filter(session => {
+          const sessionDate = new Date(session.lastUsed);
+          
+          if (dateFilter === 'today') {
+            return sessionDate.toDateString() === now.toDateString();
+          } else if (dateFilter === 'week') {
+            const oneWeekAgo = new Date(now);
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            return sessionDate >= oneWeekAgo;
+          } else if (dateFilter === 'month') {
+            const oneMonthAgo = new Date(now);
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            return sessionDate >= oneMonthAgo;
+          }
+          return true;
+        });
+      }
+      
+      // Apply sorting
+      if (sortBy === 'newest') {
+        filteredSessions.sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed));
+      } else if (sortBy === 'oldest') {
+        filteredSessions.sort((a, b) => new Date(a.lastUsed) - new Date(b.lastUsed));
+      } else if (sortBy === 'name') {
+        filteredSessions.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortBy === 'name-desc') {
+        filteredSessions.sort((a, b) => b.name.localeCompare(a.name));
+      }
+      
+      renderSessionsTable(filteredSessions);
+    }
+
+    // Reset filters
+    function resetFilters() {
+      document.getElementById('statusFilter').value = 'all';
+      document.getElementById('dateFilter').value = 'all';
+      document.getElementById('sortBy').value = 'newest';
+      document.getElementById('searchInput').value = '';
+      
+      renderSessionsTable(sessionsData.files);
+    }
+
+    // Export sessions
+    function exportSessions() {
+      const format = document.querySelector('input[name="exportFormat"]:checked').id.replace('exportFormat', '').toLowerCase();
+      const scope = document.querySelector('input[name="exportScope"]:checked').id.replace('exportScope', '').toLowerCase();
+      const fileName = document.getElementById('exportFileName').value || 'sessions_export';
+      
+      let sessionsToExport = [];
+      
+      if (scope === 'all') {
+        sessionsToExport = sessionsData.files;
+      } else if (scope === 'selected') {
+        const selectedSessions = Array.from(document.querySelectorAll('.session-checkbox:checked')).map(cb => cb.getAttribute('data-id'));
+        sessionsToExport = sessionsData.files.filter(s => selectedSessions.includes(s.id));
+      } else if (scope === 'filtered') {
+        // This would use the currently filtered sessions in a real app
+        sessionsToExport = sessionsData.files;
+      }
+      
+      let exportData = '';
+      
+      if (format === 'json') {
+        exportData = JSON.stringify(sessionsToExport, null, 2);
+      } else if (format === 'csv') {
+        // Simple CSV conversion
+        const headers = ['ID', 'Name', 'Number', 'Status', 'Created', 'Last Used'];
+        const rows = sessionsToExport.map(session => [
+          session.id,
+          session.name,
+          session.number,
+          session.status,
+          formatDate(session.created),
+          formatDate(session.lastUsed)
+        ]);
+        
+        exportData = headers.join(',') + '\n';
+        exportData += rows.map(row => row.map(field => `"${field.replace(/"/g, '""')}"`).join(',')).join('\n');
+      } else if (format === 'txt') {
+        exportData = sessionsToExport.map(session => 
+          `ID: ${session.id}\nName: ${session.name}\nNumber: ${session.number}\nStatus: ${session.status}\nCreated: ${formatDate(session.created)}\nLast Used: ${formatDate(session.lastUsed)}\n\n`
+        ).join('');
+      }
+      
+      // Create download link
+      const blob = new Blob([exportData], { type: `text/${format === 'csv' ? 'csv' : 'plain'}` });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      document.getElementById('exportModal').classList.add('hidden');
+      showToast(`Exported ${sessionsToExport.length} sessions as ${format.toUpperCase()}`);
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      
+      toast.className = `fixed bottom-4 right-4 flex items-center px-4 py-2 rounded-lg shadow-lg ${
+        type === 'success' ? 'bg-green-500 text-white' : 
+        type === 'error' ? 'bg-red-500 text-white' : 
+        'bg-blue-500 text-white'
+      }`;
+      
+      toastMessage.textContent = message;
+      toast.classList.remove('hidden');
+      
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Logout
+    function logout() {
+      localStorage.removeItem('login');
+      localStorage.removeItem('encodedRedirect');
+      
+      showToast('You have been logged out');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+    }
+  </script>
+  </body>
+</html>
