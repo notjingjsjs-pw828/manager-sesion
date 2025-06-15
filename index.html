@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nothing Session Manager - Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      background: #f5f6fa;
+      color: #2d3436;
+      padding-top: 70px;
+    }
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: #6c5ce7;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+    .container {
+      max-width: 100%;
+      margin: auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center; justify-content: center;
+    }
+    .stat {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      flex: 1;
+      margin: 10px;
+      text-align: center;
+    }
+    .stat h3 {
+      margin: 10px 0 5px;
+      color: #6c5ce7;
+    }
+    table {
+      width: 100%;
+      background: white;
+      border-collapse: collapse;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #f1f2f6;
+    }
+    tr:hover {
+      background: #f9f9f9;
+    }
+    .status-valid {
+      color: green;
+      font-weight: bold;
+    }
+    .status-invalid {
+      color: red;
+      font-weight: bold;
+    }
+    button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .view-btn { background: #0984e3; color: white; }
+    .edit-btn { background: #fdcb6e; color: black; }
+    .delete-btn { background: #d63031; color: white; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div><i class="fas fa-key"></i> Nothing Session Manager</div>
+    <div style="display: flex; justify-content: center; gap: 15px; margin-top: 30px;">
+  <button class="action-btn" onclick="fetchSessions()">Refresh</button>
+  <button class="action-btn" onclick="logout()">Logout</button>
+</div>
+
+<style>
+  .action-btn {
+    padding: 10px 20px;
+    border: 2px solid #6343da;
+    border-radius: 25px;
+    background-color: transparent;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+
+  .action-btn:hover {
+    background-color: #6343da;
+    transform: scale(1.05);
+  }
+</style>
+<script>
+  const encodedRedirect = localStorage.getItem('encodedRedirect');
+  if (localStorage.getItem('login') !== 'true' || !encodedRedirect) {
+    // کاربر لاگین نکرده — بازگشت به لاگین
+    window.location.href = '/';
+  }
+</script>
+
+<script>
+  function fetchSessions() {
+    location.reload(); // یا اگر fetch خاصی داری، اونو صدا بزن
+  }
+
+  function logout() {
+    localStorage.removeItem('login');
+    localStorage.removeItem('encodedRedirect');
+    Swal.fire({
+      icon: 'success',
+      title: 'Logged Out',
+      text: 'You have been logged out.',
+      timer: 1500,
+      showConfirmButton: false
+    });
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1500);
+  }
+</script>
+  </nav>
+  <div class="container">
+    <div class="stats">
+      <div class="stat">
+        <p>Total Sessions</p>
+        <h3 id="totalCount">0</h3>
+      </div>
+      <div class="stat">
+        <p>Valid Sessions</p>
+        <h3 id="validCount">0</h3>
+      </div>
+      <div class="stat">
+        <p>Recent (24h)</p>
+        <h3 id="recentCount">0</h3>
+      </div>
+    </div>
+    
+<div class="container">
+  <!-- Search & Add Section -->
+  <div class="search-bar" style="display: flex; gap: 10px; margin-bottom: 20px;">
+    <button id="openAddModalBtn" class="btn">Add</button>
+    <input type="text" id="searchInput" placeholder="Search by ID, Name or Number..." style="flex: 1;">
+    <button id="searchBtn" class="btn">Search</button>
+  </div>  
+<!-- Add Modal -->
+<div class="modal" id="addModal">
+  <div class="modal-content" style="background: #fff; padding: 20px; width: 600px; border-radius: 8px; margin: auto;">
+    <h2>Add Credential</h2>
+    <div class="form-group">
+      <label for="addCredsId">Session ID</label>
+      <input type="text" id="addCredsId" style="width: 100%;">
+    </div>
+    <div class="form-group">
+      <label for="addCredsData">Credentials Data (JSON)</label>
+      <textarea id="addCredsData" rows="10" style="width: 100%; font-family: monospace;"></textarea>
+    </div>
+    <button class="btn" id="saveAddBtn">Save</button>
+    <button class="btn" onclick="addModal.style.display='none'">Cancel</button>
+  </div>
+</div>
+  
+    <table>
+      <thead>
+        <tr>
+          <th>Session ID</th>
+          <th>Name</th>
+          <th>WA Number</th>
+          <th>Status</th>
+          <th>Date</th> <!-- اضافه شده -->
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="sessionTable">
+        <tr><td colspan="5">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+  const openAddModalBtn = document.getElementById('openAddModalBtn');
+  const addModal = document.getElementById('addModal');
+  const saveAddBtn = document.getElementById('saveAddBtn');
+  const addCredsId = document.getElementById('addCredsId');
+  const addCredsData = document.getElementById('addCredsData');
+
+  openAddModalBtn.onclick = () => {
+    addCredsId.value = '';
+    addCredsData.value = '';
+    addModal.style.display = 'flex';
+  };
+
+  saveAddBtn.onclick = async () => {
+    const credsId = addCredsId.value.trim();
+    const credsDataRaw = addCredsData.value.trim();
+
+    if (!credsId || !credsDataRaw) {
+      alert('Please enter all fields');
+      return;
+    }
+
+    let credsData;
+    try {
+      credsData = JSON.parse(credsDataRaw);
+    } catch (e) {
+      alert('Invalid JSON data');
+      return;
+    }
+
+    const payload = {
+      credsId,
+      credsData
+    };
+
+    try {
+      const res = await fetch('/api/creds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert('Credential added successfully!');
+        addModal.style.display = 'none';
+        fetchSessions();
+      } else {
+        alert('Failed to add credential');
+      }
+    } catch (e) {
+      alert('Error sending request');
+    }
+  };
+  </script>
+  <script>
+    // این بخش کد باید در فایل HTML/JavaScript سمت کاربر شما (مثلاً `index.js` یا `app.js`) قرار گیرد.
+
+async function fetchSessions() {
+  const res = await fetch('/api/files');
+  const data = await res.json();
+
+  document.getElementById('totalCount').innerText = data.total;
+  document.getElementById('validCount').innerText = data.valid;
+  document.getElementById('recentCount').innerText = data.recent;
+
+  const tbody = document.getElementById('sessionTable');
+  tbody.innerHTML = '';
+
+  data.files.forEach(sess => {
+    // همیشه وضعیت "valid" است
+    const statusText = 'valid';
+    const statusClass = 'status-valid'; // کلاس برای نمایش وضعیت valid
+    const numberCleaned = sess.number.replace(/[:].*$/, '');
+    const jsonText = JSON.stringify(sess.data, null, 2);
+
+    // تاریخ به وقت افغانستان
+    const date = new Date(sess.timestamp);
+    const formattedDate = date.toLocaleString('en-US', {
+      timeZone: 'Asia/Kabul',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Session ID">BEN-BOT~${sess.id}</td>
+      <td data-label="Name">${sess.name}</td>
+      <td data-label="WA Number">${numberCleaned}</td>
+      <td data-label="Status" class="${statusClass}">${statusText}</td>
+      <td data-label="Date">${formattedDate}</td>
+      <td data-label="Actions">
+        <button class="view-btn" onclick="viewFile('${sess.filename}')">View</button>
+        <button class="edit-btn" onclick='editFile("${sess.id}", "${sess.filename}", \`${JSON.stringify(sess.data).replace(/`/g, "\\`")}\`)'>Edit</button>
+        <button class="delete-btn" onclick="deleteFile('${sess.filename}')">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function viewFile(filename) {
+  fetch(`/files/${filename}`)
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to load file");
+      return res.text();
+    })
+    .then(content => {
+      let existing = document.getElementById('fileViewer');
+      if (existing) existing.remove(); // حذف نمایش قبلی
+
+      const viewer = document.createElement('div');
+      viewer.id = 'fileViewer';
+      viewer.style = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #1e1e1e;
+        color: #dcdcdc;
+        padding: 20px;
+        border-radius: 8px;
+        font-family: monospace;
+        z-index: 9999;
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+        box-sizing: border-box;
+      `;
+
+      const title = document.createElement('h3');
+      title.textContent = `File: ${filename}`;
+      title.style = 'margin-bottom: 10px;';
+
+      const pre = document.createElement('pre');
+      pre.textContent = content;
+      pre.style = `
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: auto;
+        background-color: #2d2d2d;
+        padding: 10px;
+        border: 1px solid #333;
+        border-radius: 4px;
+      `;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy Code';
+      copyBtn.style = `
+        position: absolute;
+        top: 10px;
+        right: 100px;
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(content);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => (copyBtn.textContent = 'Copy Code'), 2000);
+      };
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '✖️';
+      closeBtn.style = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+      closeBtn.onclick = () => viewer.remove();
+
+      viewer.appendChild(title);
+      viewer.appendChild(copyBtn);
+      viewer.appendChild(closeBtn);
+      viewer.appendChild(pre);
+      document.body.appendChild(viewer);
+    })
+    .catch(err => alert(err.message));
+}
+
+function editFile(sessionId, filename, content) {
+  let existing = document.getElementById('fileEditor');
+  if (existing) existing.remove(); // حذف ویرایش‌گر قبلی
+
+  const editor = document.createElement('div');
+  editor.id = 'fileEditor';
+  editor.style = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #1e1e1e;
+    color: #dcdcdc;
+    padding: 20px;
+    border-radius: 8px;
+    font-family: monospace;
+    z-index: 9999;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+  `;
+
+  const title = document.createElement('h3');
+  title.textContent = `Edit File: ${filename}`;
+  title.style = 'margin-bottom: 10px;';
+
+  const idInput = document.createElement('input');
+  idInput.value = sessionId;
+  idInput.style = `
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: none;
+    font-size: 16px;
+    background: #2d2d2d;
+    color: #fff;
+  `;
+
+  const textarea = document.createElement('textarea');
+  textarea.value = content;
+  textarea.style = `
+    width: 100%;
+    height: 300px;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    font-family: monospace;
+    font-size: 14px;
+    background: #2d2d2d;
+    color: #fff;
+    white-space: pre;
+  `;
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style = `
+    margin-top: 10px;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  `;
+  saveBtn.onclick = () => {
+    try {
+      const newId = idInput.value;
+      const newData = JSON.parse(textarea.value);
+      fetch(`/api/files/${filename}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newName: newId, newData })
+      }).then(() => {
+        fetchSessions();
+        editor.remove();
+      });
+    } catch (e) {
+      alert('Invalid JSON!');
+    }
+  };
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✖️';
+  closeBtn.style = `
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  `;
+  closeBtn.onclick = () => editor.remove();
+
+  editor.appendChild(title);
+  editor.appendChild(idInput);
+  editor.appendChild(textarea);
+  editor.appendChild(saveBtn);
+  editor.appendChild(closeBtn);
+  document.body.appendChild(editor);
+}
+
+function deleteFile(filename) {
+  if (!confirm('Are you sure?')) return;
+  fetch(`/api/files/${filename}`, { method: 'DELETE' }).then(fetchSessions);
+}
+
+fetchSessions();
+  </script>
+</body>
+</html>
